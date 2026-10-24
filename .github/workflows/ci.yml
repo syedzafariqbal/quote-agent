@@ -1,0 +1,93 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  id-token: write # OIDC to AWS (plan job)
+  pull-requests: write
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: app/requirements-dev.txt
+      - name: System libs for WeasyPrint
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libpango-1.0-0 libpangoft2-1.0-0
+      - run: pip install -r app/requirements-dev.txt
+      - name: Lint
+        run: ruff check app/src app/tests scripts evals --config app/pyproject.toml
+      - name: Tests
+        working-directory: app
+        run: pytest -q
+      - name: Render sample PDF
+        run: python scripts/local_quote.py "CI Test GmbH" --employees 120 --term 24
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sample-quote
+          path: out/quote.pdf
+
+  terraform:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.13"
+      - run: terraform fmt -recursive -check infra
+      - name: Validate
+        run: |
+          for d in infra/bootstrap infra/envs/dev; do
+            (cd "$d" && terraform init -backend=false -input=false && terraform validate)
+          done
+      - name: Checkov (policy as code)
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: infra
+          framework: terraform
+          config_file: .checkov.yaml
+
+  plan:
+    if: github.event_name == 'pull_request' && vars.AWS_ROLE_ARN != ''
+    needs: [python, terraform]
+    runs-on: ubuntu-latest
+    env:
+      TF_VAR_alert_email: ${{ vars.ALERT_EMAIL }}
+      TF_VAR_sender_email: ${{ vars.SENDER_EMAIL }}
+      TF_VAR_approver_email: ${{ vars.APPROVER_EMAIL }}
+      TF_VAR_estimator_model_id: ${{ vars.ESTIMATOR_MODEL_ID }}
+      TF_VAR_writer_model_id: ${{ vars.WRITER_MODEL_ID }}
+      TF_VAR_worker_image_tag: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION || 'eu-central-1' }}
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.13"
+      - name: Plan
+        working-directory: infra/envs/dev
+        run: |
+          terraform init -input=false -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}" \
+            -backend-config="region=${{ vars.AWS_REGION || 'eu-central-1' }}"
+          terraform plan -input=false -no-color -lock=false -out=tfplan | tee plan.txt
+          {
+            echo '## Terraform plan (dev)'
+            echo '```'
+            grep -E '^(Plan:|No changes)|will be (created|destroyed|updated|replaced)' plan.txt | head -100
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

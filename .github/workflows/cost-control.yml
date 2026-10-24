@@ -1,0 +1,62 @@
+name: cost-control
+
+# Weekly cost report in the job summary, and an optional nightly teardown of dev.
+# Enable teardown by setting the repository variable NIGHTLY_TEARDOWN=true.
+on:
+  schedule:
+    - cron: "0 7 * * 1"   # Monday 07:00 UTC: cost report
+    - cron: "0 21 * * *"  # daily 21:00 UTC: teardown (if enabled)
+  workflow_dispatch:
+    inputs:
+      teardown:
+        description: "Destroy the dev stack now"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  cost-report:
+    if: vars.AWS_ROLE_ARN != '' && (github.event.schedule == '0 7 * * 1' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+      - name: Month-to-date cost by service
+        run: |
+          START=$(date -u +%Y-%m-01); END=$(date -u -d tomorrow +%Y-%m-%d)
+          aws ce get-cost-and-usage --time-period Start=$START,End=$END --granularity MONTHLY \
+            --metrics UnblendedCost --group-by Type=DIMENSION,Key=SERVICE \
+            --query 'ResultsByTime[0].Groups[].[Keys[0],Metrics.UnblendedCost.Amount]' --output text \
+            | sort -k2 -nr -t$'\t' | awk -F'\t' 'BEGIN{print "## AWS cost month-to-date\n\n| Service | USD |\n|---|---|"} {printf "| %s | %.2f |\n",$1,$2; t+=$2} END{printf "| **Total** | **%.2f** |\n",t}' \
+            >> "$GITHUB_STEP_SUMMARY"
+
+  teardown:
+    if: >-
+      vars.AWS_ROLE_ARN != '' &&
+      ((github.event.schedule == '0 21 * * *' && vars.NIGHTLY_TEARDOWN == 'true') ||
+       (github.event_name == 'workflow_dispatch' && inputs.teardown))
+    runs-on: ubuntu-latest
+    environment: dev
+    env:
+      TF_VAR_alert_email: ${{ vars.ALERT_EMAIL }}
+      TF_VAR_estimator_model_id: ${{ vars.ESTIMATOR_MODEL_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION || 'eu-central-1' }}
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.13"
+      - name: Destroy dev
+        working-directory: infra/envs/dev
+        run: |
+          terraform init -input=false -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}" \
+            -backend-config="region=${{ vars.AWS_REGION || 'eu-central-1' }}"
+          terraform destroy -input=false -auto-approve

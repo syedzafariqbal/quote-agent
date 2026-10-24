@@ -1,0 +1,94 @@
+### Quote lifecycle walkthrough for the VS Code "REST Client" extension.
+### 1) Set "api" and "token" in .vscode/settings.json (rest-client.environmentVariables.dev)
+### 2) Select the environment: Ctrl/Cmd+Alt+E -> dev
+### 3) Click "Send Request" above each block, top to bottom.
+
+@quoteId = PASTE_QUOTE_ID
+
+### Create a quote (SalesRep). Leave out "employees" to let the agent estimate.
+POST {{api}}/quotes
+Authorization: Bearer {{token}}
+Content-Type: application/json
+Idempotency-Key: demo-001
+
+{
+  "clientName": "Acme Logistics GmbH",
+  "country": "DE",
+  "sites": 2,
+  "termMonths": 24,
+  "discountPct": 5,
+  "language": "en",
+  "customerEmail": "buyer@example.com",
+  "industry": "logistics",
+  "website": "acme-logistics.example"
+}
+
+### Poll the quote (status, current version, presigned PDF, allowed actions)
+GET {{api}}/quotes/{{quoteId}}
+Authorization: Bearer {{token}}
+
+### List quotes by status
+GET {{api}}/quotes?status=NEEDS_REVIEW
+Authorization: Bearer {{token}}
+
+### NEEDS_REVIEW -> confirm headcount (re-prices, new version)
+POST {{api}}/quotes/{{quoteId}}/confirm
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "employees": 140 }
+
+### Revise (works from DRAFT, PENDING_APPROVAL, APPROVED, SENT, VIEWED, FAILED)
+POST {{api}}/quotes/{{quoteId}}/revise
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "termMonths": 36, "discountPct": 12, "skus": ["MGD-001", "SEC-001", "HLP-PRM", "BKP-001", "ONB-001"] }
+
+### Approve (Manager for <=20% discount / <=150k net, otherwise Finance). Use a Manager token.
+POST {{api}}/quotes/{{quoteId}}/approve
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "comment": "OK for strategic account" }
+
+### Request changes instead of approving
+POST {{api}}/quotes/{{quoteId}}/request-changes
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "comment": "Max 10% discount please" }
+
+### Send to the customer (emails the signed link, schedules reminders + expiry)
+POST {{api}}/quotes/{{quoteId}}/send
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "customerEmail": "buyer@example.com" }
+
+### Open "customerLink" from the response in a browser to view / accept / decline.
+
+### Rep records a rejection received by phone
+POST {{api}}/quotes/{{quoteId}}/reject
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "reasonCode": "price", "note": "Went with cheaper offer" }
+
+### After ACCEPTED: record the real headcount (feeds the estimator)
+POST {{api}}/quotes/{{quoteId}}/actual-headcount
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "employees": 152 }
+
+### Audit trail
+GET {{api}}/quotes/{{quoteId}}/audit
+Authorization: Bearer {{token}}
+
+### Cancel
+POST {{api}}/quotes/{{quoteId}}/cancel
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "note": "Duplicate" }

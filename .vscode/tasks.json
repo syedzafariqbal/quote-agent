@@ -1,0 +1,16 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    { "label": "test", "type": "shell", "command": "make test", "group": { "kind": "test", "isDefault": true }, "problemMatcher": [] },
+    { "label": "lint", "type": "shell", "command": "make lint", "problemMatcher": [] },
+    { "label": "pdf: local sample", "type": "shell", "command": "make pdf", "problemMatcher": [] },
+    { "label": "tf: fmt + validate", "type": "shell", "command": "make tf-check", "problemMatcher": [] },
+    { "label": "tf: plan (dev)", "type": "shell", "command": "make plan", "problemMatcher": [] },
+    { "label": "tf: apply (dev)", "type": "shell", "command": "make apply", "problemMatcher": [] },
+    { "label": "docker: build + push worker", "type": "shell", "command": "make push", "problemMatcher": [] },
+    { "label": "cognito: get token", "type": "shell", "command": "./scripts/get_token.sh ${input:email}", "problemMatcher": [] }
+  ],
+  "inputs": [
+    { "id": "email", "type": "promptString", "description": "Cognito user email" }
+  ]
+}

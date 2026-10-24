@@ -1,0 +1,16 @@
+{
+  "recommendations": [
+    "hashicorp.terraform",
+    "ms-python.python",
+    "ms-python.vscode-pylance",
+    "ms-python.debugpy",
+    "charliermarsh.ruff",
+    "ms-azuretools.vscode-docker",
+    "amazonwebservices.aws-toolkit-vscode",
+    "humao.rest-client",
+    "github.vscode-github-actions",
+    "redhat.vscode-yaml",
+    "editorconfig.editorconfig",
+    "tomoki1207.pdf"
+  ]
+}

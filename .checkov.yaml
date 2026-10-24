@@ -1,0 +1,38 @@
+# Deliberate budget trade-offs. Each skip is documented; revisit for production.
+skip-check:
+  - CKV_AWS_18   # S3 access logging: extra bucket + cost; CloudTrail data events can replace it
+  - CKV_AWS_144  # S3 cross-region replication: DR is out of scope for dev budget
+  - CKV_AWS_145  # S3 KMS CMK: SSE-S3 (AES256) chosen to avoid KMS cost
+  - CKV2_AWS_62  # S3 event notifications: not needed
+  - CKV_AWS_119  # DynamoDB CMK: AWS-owned key chosen to avoid KMS cost
+  - CKV_AWS_158  # CloudWatch Logs KMS: default encryption is sufficient here
+  - CKV_AWS_338  # Log retention >= 1 year: 14 days keeps CloudWatch cost low
+  - CKV_AWS_117  # Lambda in VPC: Lambdas only call AWS APIs; VPC would need NAT/endpoints
+  - CKV_AWS_116  # Lambda DLQ: API Lambda is synchronous; archiver uses stream retries
+  - CKV_AWS_115  # Lambda reserved concurrency: API Gateway throttling bounds load
+  - CKV_AWS_173  # Lambda env encryption with CMK: no secrets in env vars (secret is in SSM)
+  - CKV_AWS_272  # Lambda code signing: not used in this project
+  - CKV_AWS_50   # Lambda X-Ray: enable when tracing is needed (small extra cost)
+  - CKV_AWS_26   # SNS encryption: aws/sns key blocks EventBridge/Budgets publishing (see messaging module)
+  - CKV_AWS_136  # ECR KMS: AES256 chosen
+  - CKV_AWS_65   # ECS Container Insights: disabled for cost
+  - CKV_AWS_333  # ECS public IP: no NAT gateway by design; SG has no inbound rules
+  - CKV_AWS_130  # Public subnets map public IP: disabled on subnet, enabled per task
+  - CKV2_AWS_11  # VPC flow logs: cost; enable for production
+  - CKV2_AWS_5   # SG attached check: false positive (attached by ECS service)
+  - CKV_AWS_76   # API Gateway access logging: enabled (false positive on HTTP API)
+  - CKV_AWS_309  # Public routes without auth: customer pages are protected by HMAC-signed links
+  - CKV_AWS_337  # SSM parameter CMK: aws/ssm managed key used
+  - CKV2_AWS_57  # Secrets rotation: link secret lives in SSM; rotate by tainting random_password
+  - CKV2_AWS_61  # S3 lifecycle on every bucket: set where useful
+  - CKV_AWS_300  # S3 abort multipart on every bucket: set on the PDF bucket
+  - CKV_AWS_149  # Secrets Manager CMK: not used
+  - CKV_AWS_356  # IAM "*" resource: ses:SendEmail and kms:Decrypt (with ViaService condition) only
+  - CKV_AWS_111  # IAM write without constraints: see CKV_AWS_356
+  - CKV_TF_1     # Module sources pinned by commit hash: local modules only
+  - CKV2_AWS_6   # False positive: public access block is applied to every bucket via for_each
+  - CKV_AWS_21   # PDF bucket versioning: every PDF is written once under a unique per-version key
+  - CKV_AWS_28   # DynamoDB PITR: enabled when dev_mode=false (prod), off in dev to save cost
+  - CKV_AWS_394  # AZ data source: subnets are index-based (count = az_count), new AZs do not change them
+  - CKV_AWS_290  # ses:SendEmail on "*": SES identities are resolved at send time
+  - CKV_AWS_355  # same as CKV_AWS_290

@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="{{ lang }}">
+<head>
+<meta charset="utf-8">
+<title>{{ L.title }} {{ quote_no }}</title>
+<style>
+  @page { size: A4; margin: 18mm 16mm 20mm 16mm;
+    @bottom-left { content: "{{ company_name }} · {{ quote_no }} v{{ version }}"; font-size: 8pt; color: #777; }
+    @bottom-right { content: counter(page) " / " counter(pages); font-size: 8pt; color: #777; } }
+  body { font-family: "DejaVu Sans", Arial, sans-serif; font-size: 9.5pt; color: #1d2330; }
+  h1 { font-size: 20pt; margin: 0; color: #1f4e79; letter-spacing: .5px; }
+  h2 { font-size: 11pt; color: #1f4e79; border-bottom: 1px solid #d6dde6; padding-bottom: 3px; margin: 18px 0 8px; }
+  .head { display: flex; justify-content: space-between; align-items: flex-start; }
+  .brand { font-weight: bold; font-size: 12pt; }
+  .meta td { padding: 1px 0 1px 12px; text-align: right; }
+  .meta td:first-child { color: #5b6573; }
+  .client { margin-top: 14px; }
+  .client .name { font-weight: bold; font-size: 11pt; }
+  table.items { width: 100%; border-collapse: collapse; margin-top: 4px; }
+  table.items th { background: #1f4e79; color: #fff; font-weight: normal; text-align: left; padding: 6px; font-size: 8.5pt; }
+  table.items td { padding: 6px; border-bottom: 1px solid #e6eaf0; vertical-align: top; }
+  table.items .num { text-align: right; white-space: nowrap; }
+  .desc { color: #5b6573; font-size: 8pt; }
+  table.totals { width: 55%; margin-left: 45%; border-collapse: collapse; margin-top: 10px; }
+  table.totals td { padding: 3px 6px; }
+  table.totals td.num { text-align: right; white-space: nowrap; }
+  table.totals tr.grand td { border-top: 2px solid #1f4e79; font-weight: bold; font-size: 11pt; padding-top: 6px; }
+  .assume td { padding: 2px 12px 2px 0; }
+  .tag { display: inline-block; padding: 1px 6px; border-radius: 8px; font-size: 7.5pt; background: #fff3cd; color: #7a5b00; }
+  .tag.ok { background: #e3f4e8; color: #1e6b34; }
+  .note { font-size: 8pt; color: #5b6573; margin-top: 8px; }
+</style>
+</head>
+<body>
+  <div class="head">
+    <div>
+      <div class="brand">{{ company_name }}</div>
+      <h1>{{ L.title }}</h1>
+    </div>
+    <table class="meta">
+      <tr><td>{{ L.quote_no }}</td><td><b>{{ quote_no }}</b></td></tr>
+      <tr><td>{{ L.version }}</td><td>{{ version }}</td></tr>
+      <tr><td>{{ L.date }}</td><td>{{ issued }}</td></tr>
+      <tr><td>{{ L.valid_until }}</td><td>{{ valid_until }}</td></tr>
+    </table>
+  </div>
+
+  <div class="client">
+    <div style="color:#5b6573">{{ L.client }}</div>
+    <div class="name">{{ client_name }}</div>
+    {% if client_address %}<div>{{ client_address }}</div>{% endif %}
+  </div>
+
+  <h2>{{ L.summary }}</h2>
+  <p>{{ summary }}</p>
+
+  <h2>{{ L.assumptions }}</h2>
+  <table class="assume">
+    <tr><td>{{ L.employees }}</td><td><b>{{ q.employees }}</b>
+      {% if estimate.source in ("user", "actual", "confirmed") %}<span class="tag ok">{{ L.confirmed }}</span>
+      {% else %}<span class="tag">{{ L.estimated }} ({{ estimate.min }}–{{ estimate.max }})</span>{% endif %}</td></tr>
+    <tr><td>{{ L.sites }}</td><td>{{ q.sites }}</td></tr>
+    <tr><td>{{ L.term }}</td><td>{{ q.term_months }} {{ L.months }}</td></tr>
+    <tr><td>{{ L.catalog }}</td><td>{{ q.catalog_version }} · {{ q.tier }}</td></tr>
+  </table>
+
+  <h2>{{ L.service }}</h2>
+  <table class="items">
+    <thead><tr><th>{{ L.service }}</th><th class="num">{{ L.qty }}</th><th class="num">{{ L.unit }}</th>
+      <th class="num">{{ L.monthly }}</th><th class="num">{{ L.total }}</th></tr></thead>
+    <tbody>
+    {% for li in q.line_items %}
+      <tr>
+        <td><b>{{ li.name }}</b> <span class="desc">{{ li.sku }}</span><div class="desc">{{ li.description }}</div></td>
+        <td class="num">{{ li.quantity }}</td>
+        <td class="num">{{ li.unit_price | money }}</td>
+        <td class="num">{% if li.pricing == "one_time" %}{{ L.one_time }}{% else %}{{ li.monthly_amount | money }}{% endif %}</td>
+        <td class="num">{{ li.term_amount | money }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+
+  <table class="totals">
+    <tr><td>{{ L.recurring_term }}</td><td class="num">{{ q.recurring_term_total | money }}</td></tr>
+    {% if q.term_discount_amount > 0 %}<tr><td>{{ L.term_discount }} ({{ q.term_discount_pct | money }} %)</td><td class="num">−{{ q.term_discount_amount | money }}</td></tr>{% endif %}
+    <tr><td>{{ L.one_time_total }}</td><td class="num">{{ q.one_time_total | money }}</td></tr>
+    <tr><td>{{ L.subtotal }}</td><td class="num">{{ q.subtotal | money }}</td></tr>
+    {% if q.discount_amount > 0 %}<tr><td>{{ L.discount }} ({{ q.discount_pct | money }} %)</td><td class="num">−{{ q.discount_amount | money }}</td></tr>{% endif %}
+    <tr><td>{{ L.net }}</td><td class="num">{{ q.net_total | money }} {{ q.currency }}</td></tr>
+    <tr><td>{{ L.vat }} ({{ (q.vat_rate * 100) | money }} %)</td><td class="num">{{ q.vat_amount | money }}</td></tr>
+    <tr class="grand"><td>{{ L.gross }}</td><td class="num">{{ q.gross_total | money }} {{ q.currency }}</td></tr>
+  </table>
+  {% if q.reverse_charge %}<p class="note">{{ L.reverse_charge }}</p>{% endif %}
+
+  <h2>{{ L.terms }}</h2>
+  <p class="note">{{ L.terms_text.format(cur=q.currency) }}</p>
+  <p class="note">{{ L.source }}: {{ estimate.source }}{% if estimate.confidence is defined %} · confidence {{ estimate.confidence }}{% endif %} · ID {{ quote_id }}</p>
+</body>
+</html>

@@ -1,0 +1,81 @@
+name: deploy-dev
+
+on:
+  push:
+    branches: [main]
+    paths: ["app/**", "infra/**", "catalog/**", ".github/workflows/deploy.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: deploy-dev
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: dev
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION || 'eu-central-1' }}
+      TF_VAR_alert_email: ${{ vars.ALERT_EMAIL }}
+      TF_VAR_sender_email: ${{ vars.SENDER_EMAIL }}
+      TF_VAR_approver_email: ${{ vars.APPROVER_EMAIL }}
+      TF_VAR_estimator_model_id: ${{ vars.ESTIMATOR_MODEL_ID }}
+      TF_VAR_writer_model_id: ${{ vars.WRITER_MODEL_ID }}
+      TF_VAR_worker_image_tag: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.13"
+          terraform_wrapper: false
+
+      - name: Terraform init
+        working-directory: infra/envs/dev
+        run: |
+          terraform init -input=false -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}" \
+            -backend-config="region=${{ env.AWS_REGION }}"
+
+      # First run: the ECR repository must exist before we can push to it.
+      - name: Ensure ECR repository
+        working-directory: infra/envs/dev
+        run: terraform apply -input=false -auto-approve -target=module.worker.aws_ecr_repository.worker
+
+      - name: ECR login
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build and push worker image
+        working-directory: infra/envs/dev
+        run: |
+          REPO=$(terraform output -raw ecr_repository_url 2>/dev/null || true)
+          if [ -z "$REPO" ]; then REPO="${{ steps.ecr.outputs.registry }}/quote-agent-dev-worker"; fi
+          echo "REPO=$REPO" >> "$GITHUB_ENV"
+          if aws ecr describe-images --repository-name "${REPO##*/}" --image-ids imageTag=${{ github.sha }} >/dev/null 2>&1; then
+            echo "image already exists"; exit 0
+          fi
+          docker buildx build --platform linux/amd64 --provenance=false -t "$REPO:${{ github.sha }}" --push ../../../app
+
+      - name: Terraform apply
+        working-directory: infra/envs/dev
+        run: terraform apply -input=false -auto-approve
+
+      - name: Smoke test
+        working-directory: infra/envs/dev
+        run: |
+          API=$(terraform output -raw api_endpoint)
+          code=$(curl -s -o /dev/null -w "%{http_code}" "$API/quotes")
+          echo "GET /quotes without token -> $code (expect 401)"
+          test "$code" = "401"
+          echo "### Deployed ${{ github.sha }} to dev: $API" >> "$GITHUB_STEP_SUMMARY"

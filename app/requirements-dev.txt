@@ -1,0 +1,4 @@
+-r requirements-worker.txt
+pytest>=8
+moto[dynamodb,s3,sqs,events]>=5
+ruff>=0.6

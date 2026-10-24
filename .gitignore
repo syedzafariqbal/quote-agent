@@ -1,0 +1,27 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+
+# Local config / secrets
+.env
+infra/**/terraform.tfvars
+infra/**/backend.hcl
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+tfplan
+crash.log
+infra/**/.build/
+
+.git.bak/
+install-aws-cli.sh
+
+# Outputs
+out/
+*.pdf
+!docs/*.pdf

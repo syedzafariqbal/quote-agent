@@ -1,0 +1,86 @@
+{
+  "version": "2026-10",
+  "effectiveFrom": "2026-10-01",
+  "currency": "EUR",
+  "validityDays": 30,
+  "maxDiscountPct": 30,
+  "tiers": [
+    { "name": "Small", "minEmployees": 1, "maxEmployees": 49 },
+    { "name": "Mid", "minEmployees": 50, "maxEmployees": 249 },
+    { "name": "Large", "minEmployees": 250, "maxEmployees": 9999999 }
+  ],
+  "services": [
+    {
+      "sku": "MGD-001",
+      "name": { "en": "Managed Cloud Operations", "de": "Managed Cloud Betrieb" },
+      "description": { "en": "24/5 monitoring, patching and incident response for cloud workloads.", "de": "Überwachung, Patching und Incident Response für Cloud-Workloads (24/5)." },
+      "pricing": "per_employee_month",
+      "tierPrices": { "Small": 12.0, "Mid": 9.0, "Large": 7.0 }
+    },
+    {
+      "sku": "SEC-001",
+      "name": { "en": "Security Monitoring", "de": "Sicherheitsüberwachung" },
+      "description": { "en": "Centralised logging, threat detection and monthly security report.", "de": "Zentrales Logging, Bedrohungserkennung und monatlicher Sicherheitsbericht." },
+      "pricing": "per_employee_month",
+      "tierPrices": { "Small": 6.0, "Mid": 5.0, "Large": 4.0 },
+      "requires": ["MGD-001"]
+    },
+    {
+      "sku": "HLP-001",
+      "name": { "en": "Service Desk (business hours)", "de": "Service Desk (Geschäftszeiten)" },
+      "description": { "en": "Ticket and phone support Mon-Fri, 08:00-18:00.", "de": "Ticket- und Telefonsupport Mo-Fr, 08:00-18:00 Uhr." },
+      "pricing": "per_employee_month",
+      "tierPrices": { "Small": 15.0, "Mid": 12.0, "Large": 10.0 },
+      "excludes": ["HLP-PRM"]
+    },
+    {
+      "sku": "HLP-PRM",
+      "name": { "en": "Service Desk 24/7", "de": "Service Desk 24/7" },
+      "description": { "en": "Round-the-clock ticket and phone support with 1h response SLA.", "de": "Rund-um-die-Uhr Support mit 1h Reaktionszeit." },
+      "pricing": "per_employee_month",
+      "tierPrices": { "Small": 22.0, "Mid": 18.0, "Large": 15.0 },
+      "excludes": ["HLP-001"]
+    },
+    {
+      "sku": "BKP-001",
+      "name": { "en": "Backup & Recovery", "de": "Backup & Wiederherstellung" },
+      "description": { "en": "Daily backups with quarterly restore tests, per site.", "de": "Tägliche Backups mit vierteljährlichen Restore-Tests, pro Standort." },
+      "pricing": "per_site_month",
+      "price": 150.0
+    },
+    {
+      "sku": "ONB-001",
+      "name": { "en": "Onboarding & Migration", "de": "Onboarding & Migration" },
+      "description": { "en": "One-time assessment, setup and migration.", "de": "Einmalige Analyse, Einrichtung und Migration." },
+      "pricing": "one_time",
+      "tierPrices": { "Small": 1500.0, "Mid": 2500.0, "Large": 6000.0 }
+    }
+  ],
+  "defaultPackages": {
+    "Small": ["MGD-001", "HLP-001", "ONB-001"],
+    "Mid": ["MGD-001", "SEC-001", "HLP-001", "BKP-001", "ONB-001"],
+    "Large": ["MGD-001", "SEC-001", "HLP-PRM", "BKP-001", "ONB-001"]
+  },
+  "termDiscounts": { "12": 0.0, "24": 0.05, "36": 0.10 },
+  "travel": {
+    "enabled": true,
+    "ratePerKm": 0.6,
+    "freeKm": 50,
+    "roundTrips": 2,
+    "offices": [
+      { "name": "Bremen", "position": [8.8017, 53.0793] },
+      { "name": "Berlin", "position": [13.405, 52.52] }
+    ]
+  },
+  "approval": {
+    "managerDiscountPct": 10,
+    "financeDiscountPct": 20,
+    "managerNetTotal": 50000,
+    "financeNetTotal": 150000
+  },
+  "tax": {
+    "sellerCountry": "DE",
+    "defaultVat": 0.19,
+    "vatByCountry": { "DE": 0.19, "AT": 0.20, "NL": 0.21, "FR": 0.20, "BE": 0.21, "DK": 0.25, "PL": 0.23 }
+  }
+}

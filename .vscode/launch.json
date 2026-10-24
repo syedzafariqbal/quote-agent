@@ -1,0 +1,40 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Render quote PDF locally (no AWS)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/scripts/local_quote.py",
+      "args": ["Acme Logistics GmbH", "--employees", "120", "--term", "24", "--travel-km", "180"],
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Worker against dev AWS (reads .env)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "worker.main",
+      "cwd": "${workspaceFolder}/app/src",
+      "envFile": "${workspaceFolder}/.env",
+      "env": { "PYTHONPATH": "${workspaceFolder}/app/src" },
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Run LLM evals (dev Bedrock)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/evals/run_evals.py",
+      "envFile": "${workspaceFolder}/.env",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Debug current test file",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "pytest",
+      "args": ["${file}", "-q"],
+      "cwd": "${workspaceFolder}/app",
+      "console": "integratedTerminal"
+    }
+  ]
+}

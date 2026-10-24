@@ -1,0 +1,30 @@
+name: llm-evals
+
+# Runs only when estimator prompts/code or the golden set change, to keep Bedrock cost low.
+on:
+  pull_request:
+    paths: ["app/src/quote_core/estimator.py", "evals/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  evals:
+    if: vars.AWS_ROLE_ARN != ''
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install boto3
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION || 'eu-central-1' }}
+      - name: Run golden set
+        env:
+          ESTIMATOR_MODEL_ID: ${{ vars.EVAL_MODEL_ID || vars.ESTIMATOR_MODEL_ID }}
+        run: python evals/run_evals.py --min-pass 0.85
