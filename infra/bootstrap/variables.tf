@@ -19,6 +19,18 @@ variable "github_repo" {
   default     = "quote-agent"
 }
 
+variable "github_owner_id" {
+  description = "Numeric owner ID. Set it (with github_repo_id) when GitHub sends the immutable sub format repo:owner@id/repo@id:..."
+  type        = string
+  default     = ""
+}
+
+variable "github_repo_id" {
+  description = "Numeric repository ID (https://api.github.com/repos/<owner>/<repo> -> id)"
+  type        = string
+  default     = ""
+}
+
 variable "create_github_oidc_provider" {
   description = "Set false if the account already has the token.actions.githubusercontent.com provider"
   type        = bool

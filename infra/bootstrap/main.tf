@@ -71,7 +71,11 @@ data "aws_iam_openid_connect_provider" "github" {
 
 locals {
   oidc_arn = var.create_github_oidc_provider ? aws_iam_openid_connect_provider.github[0].arn : data.aws_iam_openid_connect_provider.github[0].arn
-  repo     = "${var.github_owner}/${var.github_repo}"
+  # GitHub sends either repo:owner/repo:... or, with immutable IDs, repo:owner@id/repo@id:...
+  repos = compact([
+    "${var.github_owner}/${var.github_repo}",
+    var.github_owner_id != "" && var.github_repo_id != "" ? "${var.github_owner}@${var.github_owner_id}/${var.github_repo}@${var.github_repo_id}" : "",
+  ])
 }
 
 data "aws_iam_policy_document" "gha_trust" {
@@ -89,11 +93,11 @@ data "aws_iam_policy_document" "gha_trust" {
     condition {
       test     = "StringLike"
       variable = "token.actions.githubusercontent.com:sub"
-      values = [
-        "repo:${local.repo}:ref:refs/heads/main",
-        "repo:${local.repo}:pull_request",
-        "repo:${local.repo}:environment:dev",
-      ]
+      values = flatten([for r in local.repos : [
+        "repo:${r}:ref:refs/heads/main",
+        "repo:${r}:pull_request",
+        "repo:${r}:environment:dev",
+      ]])
     }
   }
 }

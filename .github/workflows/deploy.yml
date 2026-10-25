@@ -54,6 +54,12 @@ jobs:
         id: ecr
         uses: aws-actions/amazon-ecr-login@v2
 
+      # Authenticated pulls of the base image: anonymous ECR Public pulls from shared runner IPs hit 429.
+      - name: ECR Public login
+        uses: aws-actions/amazon-ecr-login@v2
+        with:
+          registry-type: public
+
       - uses: docker/setup-buildx-action@v3
 
       - name: Build and push worker image
